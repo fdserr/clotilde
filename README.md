@@ -1,6 +1,9 @@
 # clotilde
 
-Clotilde implements the basic ops of the Linda process coordination language:
+<img src="http://justiniac.github.com/clotilde/resources/clotilde.jpg"
+ alt="Clotilde" title="Clotilde, first queen of France" align="right" />
+
+Clotilde (Clovis' spouse, first queen of France, 475-545) implements the basic ops of the Linda process coordination language:
 
 http://en.wikipedia.org/wiki/Linda_(coordination_language)
 

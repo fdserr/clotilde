@@ -18,9 +18,7 @@ https://github.com/clojure/core.match
 
 ## Usage
 
-Don't use, work in progress.
-
-out! things in space, take them in! or just rd! them up, eval! to fork.
+out! things in space, take them in! or just rd! them up, using eval! to fork.
 
 ## License
 

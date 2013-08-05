@@ -1,9 +1,5 @@
 # Introduction to clotilde
 
-## Adding a leiningen dependency
-
-[org.clojed/clotilde "0.1.0-beta"]
-
 ## initialize! []
 
 Evaluates to: nil.

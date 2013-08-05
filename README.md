@@ -7,7 +7,7 @@ Clotilde (Clovis' spouse, first queen of France, 475-545) implements the basic o
 
 http://en.wikipedia.org/wiki/Linda_(coordination_language)
 
-In computer science, Linda is a model of coordination and communication among several parallel processes operating upon objects stored in and retrieved from shared, virtual, associative memory. Linda was developed by David Gelernter and Nicholas Carriero at Yale University and is named for Linda Lovelace, an actress in the porn movie Deep Throat, a pun on Ada's tribute to Ada Lovelace."
+"In computer science, Linda is a model of coordination and communication among several parallel processes operating upon objects stored in and retrieved from shared, virtual, associative memory. Linda was developed by David Gelernter and Nicholas Carriero at Yale University and is named for Linda Lovelace, an actress in the porn movie Deep Throat, a pun on Ada's tribute to Ada Lovelace."
 
 More on the topic :
 

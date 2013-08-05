@@ -10,7 +10,7 @@ Side-effect(s): empty space, empty wait queue.
 
 expr: any expression.
 
-Evaluates to: nil.
+Evaluates to: expr.
 
 Side-effect(s): a waiting pattern-matching succeeds and is removed from queue, or space contains expr.
 

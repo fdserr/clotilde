@@ -84,5 +84,13 @@
              (is (= [:done] @-space) "Space contains only :done?")
              (is (= [] @-waitq) "Wait queue is empty?"))))
 
-
+(deftest test-match-fn
+  (testing "Quoted pattern with wildcards '[:x 1 _]"
+           (initialize!)
+           (out! [:x 1 true])           
+           (eval! 
+             (let [[_ _ p] (in! '[:x 1 _])]
+               [:done p]))
+           (Thread/sleep 100)
+           (is (= [:done true] @-space) "Space contains [:done true]?")))
 

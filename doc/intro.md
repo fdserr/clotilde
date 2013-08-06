@@ -16,7 +16,7 @@ Side-effect(s): a waiting pattern-matching succeeds and is removed from queue, o
 
 ## rd! [pattern]
 
-pattern: a valid pattern for pattern-matching (see core/match).
+pattern: a valid pattern for pattern-matching (see org.clojure/core/match).
 
 Evaluates to: a pattern-matched expression from space (no ordering is assumed in space).
 

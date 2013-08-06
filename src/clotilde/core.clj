@@ -15,7 +15,7 @@
   (io! (-out expr -space -waitq) expr))
 
 (defn rd! 
-  "pattern: a valid pattern for pattern-matching (see core/match).
+  "pattern: a valid pattern for pattern-matching (see org.clojure/core/match).
   Evaluates to: a pattern-matched expression from space (no ordering is assumed in space).
   Side-effect(s): if no match is found in space, then the wait queue contains a match-promise for pattern.
   In french: rd! will NOT remove the matched expression from space. 

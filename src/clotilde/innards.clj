@@ -42,12 +42,12 @@
   [match-fn space]
   (first (filter match-fn space)))
 
-(defn -match-fn
+(defmacro -match-fn
   "Evaluates to: a one argument pattern-matching function. 
-  pattern: to match against the fn argument. See core/match.
+  pattern: to match against the fn argument. See org.clojure/core/match.
   Convention: a match function evaluates to the matched expression, or nil."
   [pattern]
-  #(match [%] [pattern] % :else nil))
+  `#(match [%] [~pattern] % :else nil))
 
 (defn -out 
   "out! op implementation.

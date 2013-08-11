@@ -1,5 +1,5 @@
 (ns clotilde.innards
-  (:use [clojure.core.match :only (match)]))
+  (:use [matchure :only (when-match)]))
 
 (declare -init-local -space -waitq -rdin -out)
 
@@ -42,12 +42,23 @@
   [match-fn space]
   (first (filter match-fn space)))
 
-(defmacro -match-fn
+(defmacro -unquote-pattern
+  "TODO: Ugly hack, help needed."
+  [pattern]
+  `~pattern)
+
+(defn -match-fn
   "Evaluates to: a one argument pattern-matching function. 
   pattern: to match against the fn argument. See org.clojure/core/match.
   Convention: a match function evaluates to the matched expression, or nil."
   [pattern]
-  `#(match [%] [~pattern] % :else nil))
+  #(when-match [pattern %] %))
+
+(defn- match-tuple
+  "TODO"
+  [tuple & ptns]
+  (when (= (count tuple) (count ptns)) 
+    :ok))
 
 (defn -out 
   "out! op implementation.

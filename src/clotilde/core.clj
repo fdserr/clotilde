@@ -5,32 +5,45 @@
   "Evaluates to nil.
   Side-effect: empty space."
   []
-  (io! (-init-local)))
+  (io! (-init-local)) nil)
 
 (defmacro out!
-  "exprs: one or more s-expressions (they'll be evaluated in the calling thread, 
-  side effects ok, transactions verboten).
-  Evaluates to nil.
-  Side-effect(s): some blocked in! or rd! may succeed, 
-  or a tuple [expr1-result expr2-result .. exprN-result] is put in space."
+  "exprs: one or more s-expressions; they'll be evaluated within the calling thread 
+  (side effects ok, transactions strictly verboten).
+  Evaluates to a tuple form [expr1-result expr2-result .. exprN-result].
+  Side-effect(s): some waiting in! or rd! succeed, or the tuple is put in space."
   [& exprs]
-  `(io! (-out (vector ~@exprs) -space -waitq) nil))
+  `(out-eval ~@exprs))
 
 (defmacro eval!
-  "Just like out!, but exprs are evaluated within a (single) new thread."
+  "Just like out!, but exprs are evaluated within a (single) new thread of execution.
+  Evaluates to a future; 
+  when dereferenced, yields a tuple form [expr1-result expr2-result .. exprN-result]
+  and blocks until fully evaluated."
   [& exprs]
-  `(io! (future (-out (vector ~@exprs) -space -waitq)) nil))
+  `(future (out-eval ~@exprs)))
 
-(defmacro rd! 
-  "pattern-elements: one ore more pattern elements to match against tuples in space (see matchure).
-  Evaluates to nil.
+#_(defn rd! 
+  "patterns: a vector of pattern elements to match against tuples in space.
+  Valid patterns are literals (eg.: 0, \"bug\", :x, ...), bindings (eg.: x, y, whatnot, ...), 
+  wildcards (_ and ?), regexps (eg.: #\"hello\"), and/or variables to be bound within the 
+  lexical context of rd! (eg.: ?var, [?fst & ?rst], ...). 
+  See matchure on GitHub for much, much more. Mucho thankies for writing matchure, Drew!
+  body: one or more s-expressions to evaluate within the lexical context of rd!.
+  Evaluates to body, in an implicit do.
   Side-effect(s): rd! will block until a matching tuple is found (no order assumed in space),
   and variables (eg. ?var) are bound to their respective matching value from the tuple."
-  [& pattern-elements] 
-  `(io! (-rdin (quote (vector ~@pattern-elements)) :rd -space -waitq)) nil)
+  [patterns & body] 
+  (io! @(rd-in 'patterns :rd -space -waitq 'body)
+       
+       
+       ))
 
-(defmacro in!
+#_(defn in!
   "Just like rd!, but the matching tuple is removed from space."
-  [& pattern-elements] 
-  `(io! (-rdin (quote (vector ~@pattern-elements)) :in -space -waitq)) nil)
+  [patterns & body] 
+  (io! @(rd-in 'patterns :in -space -waitq 'body)
+       
+       
+       ))
 

@@ -2,36 +2,41 @@
   (:use clojure.test
         clotilde.core
         clotilde.innards
-        [matchure :only (when-match)]))
+        [matchure :only (fn-match)]))
 
-(defn safe-ops
+(defmacro safe-ops
   [time-out & exprs]
-  (deref (future exprs) time-out nil))
-
-(defn safe-op
-  [time-out expr]
-  (deref (future expr) time-out nil))
+  `(deref (future ~@exprs) ~time-out nil))
 
 (deftest test-tools
-  (testing safe-ops "safe-ops"
-           (is (= '(nil) (safe-ops 10 (Thread/sleep 100))))
-           (is (= '(nil :ok) (safe-ops 100 (Thread/sleep 10) :ok))))
-  (testing safe-op "safe-op"
-           (is (= nil (safe-op 10 (Thread/sleep 100))))
-           (is (= :ok (safe-op 10 :ok)))))
+  (testing "safe-ops"
+           (is (= nil (safe-ops 10 (Thread/sleep 100) :ok)))
+           (is (= :ok (safe-ops 100 (Thread/sleep 10) :ok)))))
 
 (deftest test-initialize!
   (testing "New empty space."
            (initialize!)
-           (is (= [] @-space) "Empty space?")
-           (is (= [] @-waitq) "Empty queue?"))
-  (testing "Clearing space and queue."
-           (out! :x)
-           (future (rd! :y))
+           (dosync
+             (is (= [] @-space))
+             (is (= [] @-waitq-rds))
+             (is (= [] @-waitq-ins))))
+  (testing "Clearing randomly filled space and queues."
+           (dosync
+             (commute -space conj [:x :y])
+             (commute -waitq-rds conj [(promise), (partial + 1)])
+             (commute -waitq-ins conj [(promise), (partial + 1)])))
+           (initialize!)
+           (dosync 
+             (is (= [] @-space))
+             (is (= [] @-waitq-rds))
+             (is (= [] @-waitq-ins)))
+  #_(testing "Clearing space and queue."
+           (out! :x 1)
+           (future (rd! [:y] (1)))
            (Thread/sleep 100)
            (dosync 
              (is (= 1 (count @-space)) "Space not empty?")
-             (is (= 1 (count @-waitq)) "Queue not empty?"))
+             (is (= 1 (count @-waitq)) "Queue not empty?"))             
            (initialize!)
            (dosync 
              (is (= [] @-space) "Emptied space?")
@@ -40,7 +45,7 @@
 (deftest test-out!
   (testing "(out! :x)."
            (initialize!)
-           (out! :x)
+           (is (= [:x] (out! :x)))
            (dosync
              (is (= [[:x]] @-space) "Space contains [:x]?")))
   (testing "N-times (out! :x)"
@@ -51,37 +56,39 @@
              (is (= [[:x] [:x]] @-space) "Space contains [:x] twice?")))
   (testing "(out! (+ 1 2) (+ 2 3)"
            (initialize!)
-           (out! (+ 1 2) (+ 2 3))
+           (is (= [3 5] (out! (+ 1 2) (+ 2 3))))
            (dosync
              (is (= [[3 5]] @-space) "Space contains [3 5]?"))))
 
 (deftest test-eval!
   (testing "(eval! expr)"
            (initialize!)
-           (eval! (+ 1 1))
-           (Thread/sleep 100)
-           (dosync
-             (is (= [[2]] @-space) "Space contains [2]?")))
+           (let [f (eval! (+ 1 1))]
+             (Thread/sleep 100)
+             (dosync
+               (is (= [[2]] @-space) "Space contains [2]?"))
+             (is (= [2] @f))))
   (testing "(eval! expr1 expr2 :x)"
            (initialize!)
-           (eval! 
+           (let [f (eval! 
                (+ 1 1)
                (+ 1 2)
-               :x)
-           (Thread/sleep 100)
-           (dosync
-             (is (= [[2 3 :x]] @-space) "Space contains [2 3 :x]?")))
+               :x)]
+             (Thread/sleep 100)
+             (dosync
+               (is (= [[2 3 :x]] @-space) "Space contains [2 3 :x]?"))
+             (is (= [2 3 :x] @f))))
   (testing "Evaluating N * (eval! expr1 expr2 :value) places N * [expr1-result expr2-result :value] into space."
            (initialize!)
-           (eval! 
+           @(eval! 
                (+ 1 1)
                (+ 1 2)
                :x)
-           (eval! 
+           @(eval! 
                (+ 1 1)
                (+ 1 2)
                :y)
-           (eval! 
+           @(eval!  
                (+ 1 1)
                (+ 1 2)
                :z)
@@ -92,11 +99,11 @@
            (initialize!)
            (eval! (out! (+ 1 0) (+ 1 1)) :x :y :z)
            (dosync
-             (is (= [[1 2] [nil :x :y :z]] @-space)))))
+             (is (= [[1 2] [[1 2] :x :y :z]] @-space)))))
 
-(deftest test-match
+#_(deftest test-matcher
   (testing ""
-           ))
+           ()))
 
 #_(deftest test-rd!
   (testing "(out! :x) then (rd! :x)."
@@ -104,11 +111,11 @@
            (out! :z)
            (out! :y)
            (out! :x)
-           (is (= [:x] (safe-op (rd! :x))) "(rd! :x) evals to [:x]?")
+           (is (= [:x] (safe-ops (rd! [:x]))) "(rd! :x) evals to [:x]?")
            (is (= [[:z] [:y] [:x]] @-space) "Space still contains [:x] after (rd! :x)?"))
   (testing "Evaluating (eval! (rd! :x) :done) blocks untill (out! :x) is evaluated."
            (initialize!)
-           (eval! (rd! :x) :done)
+           (eval! (rd! [:x] :ok) :done)
            (Thread/sleep 100)
            (dosync
              (is (= [] @-space) "Space is still empty because (rd! :x) blocks?")
@@ -125,11 +132,11 @@
   (testing "(out! :x) then (in! :x)."
            (initialize!)
            (out! :x)
-           (is (= [:x] (safe-op (in! :x))) "(in! :x) evals to [:x]?")
+           (is (= [:x] (safe-ops (in! [:x]))) "(in! :x) evals to [:x]?")
            (is (= [] @-space) "Space is empty after (in! :x)?"))
     (testing "Evaluating (eval! (in! :x) :done) blocks untill (out! :x) is evaluated."
            (initialize!)
-           (eval! (in! :x) :done)
+           (eval! (in! [:x]) :done)
            (Thread/sleep 100)
            (dosync
              (is (= [] @-space) "Space doesn't contain [:x :done] yet?")

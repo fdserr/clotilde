@@ -1,6 +1,8 @@
 (ns clotilde.innards
   (:use [matchure :only (fn-match)]))
 
+;; Nothing private => easy test and easy plugs
+
 (defonce 
   ^{:doc "Tuple space."} 
   -space (ref (vector)))
@@ -14,6 +16,7 @@
   -waitq-rds (ref (vector)))
 
 (defn init-local
+  "Start a fresh space, blank or equal to vectors."
   ([] 
     (dosync
       (ref-set -waitq-ins (vector))
@@ -59,42 +62,25 @@
         (recur (empty coll) fun (conj applied x) (vec (concat not-applied (rest coll))))
         (recur (rest coll) fun applied (conj not-applied (first coll)))))))
 
-#_(defn -resolve-match-promise
-  "Evaluates to: the resolved match-promise argument, or nil.
-  Side effect(s): the promise is delivered if the match succeeds."
-  [tuple match-promise]
-  (let [[p f _] match-promise
-        e (f tuple)]
-    (when e
-      (deliver p e)
-      match-promise)))
-
-#_(defn -match-in-waitq
-  "Evaluates to a [promise, index] form where:
-  promise: a realized promise referencing a successful match of the tuple arg in waitq, or nil;
-  index: index of the resolved match-promise in waitq, or -1."
-  [tuple waitq]
-  (for [x waitq
-        i (.indexOf x)
-        mp (-resolve-match-promise tuple x)]
-    (when mp
-      (let [[_ _ m] mp]
-        (when (= :rd m)
-          (-match-in-waitq tuple (dissoc waitq i)))))))
-
 (defn resolve-match-promise?
+  "Attempt to resolve a match promise.
+  Eval to matcher result or nil."
   [tuple [promise matcher]]
   (when-let [e (matcher tuple)]
     (deliver promise e)))
 
 (defn match-in-queue?
+  "Pass tuple to all waiting rd!s and to some in!s.
+  Return truthy as soon as an in! matches, else eval to nil."
   [tuple]
-  (let [[r-ok r-nok] (extract-all-with @-waitq-rds (partial resolve-match-promise? tuple))
-        [i-ok i-nok] (extract-one-with @-waitq-ins (partial resolve-match-promise? tuple))]
-    (when (seq r-ok)
-      (ref-set -waitq-rds r-nok))
-    (when (seq i-ok)
-      (ref-set -waitq-ins i-nok))))
+  (let [rslv (partial resolve-match-promise? tuple)
+        [rd-ok rd-nok] (extract-all-with @-waitq-rds rslv)
+        [in-ok in-nok] (extract-one-with @-waitq-ins rslv)]
+    (when-not (empty? rd-ok)
+      (ref-set -waitq-rds rd-nok))
+    (when-not (empty? in-ok)
+      (ref-set -waitq-ins in-nok))
+    (not-empty in-ok)))
 
 (defn out-eval 
   "out! and eval! ops implementation.
@@ -103,11 +89,11 @@
   (io! (dosync
          (let [t (vec exprs)]
            (when-not (match-in-queue? t)        
-             (commute -space conj t))
+             (alter -space conj t))
            t))))
 
 (defn rd
-  "rd op implementation.
+  "rd! op implementation.
   Match in space or Q up."
   [matcher]
   (io! 
@@ -117,25 +103,22 @@
         (let [e (->> @-space (map matcher) (drop-while nil?) first)
               p (if e (delay e) (promise))]
           (when-not e
-            (commute -waitq-rds conj [p matcher]))
+            (alter -waitq-rds conj [p matcher]))
           p)))))
 
-#_(defn rd-in
-  "rd! and in! ops implementation.
-  Match in space or add to queue [promise matcher mode]."
-  [patterns mode & body]
-    (dosync 
-      (let [f# (match-fn patterns body)
-            [e# i#] (-match-in-space f# @space-ref)]
-        #_(if e#
-          (do
-            (when (= mode :in)
-              (alter space-ref dissoc i#))        
-            (delay e#))
-          (let [p# (promise)] 
-            (alter waitq-ref conj [p# f# mode])
-            p#)))))
-
-
-
+(defn in
+  "in! op implementation.
+  Remove match from space or Q up."
+  [matcher]
+  (io!
+    (deref
+      (dosync
+        (ensure -waitq-rds)
+        (let [[ok nok] (extract-one-with @-space matcher)
+              e (first ok)
+              p (if e (delay e) (promise))]
+          (if-not (empty? ok)
+            (ref-set -space nok)
+            (alter -waitq-ins conj [p matcher]))
+          p)))))
 

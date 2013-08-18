@@ -2,6 +2,8 @@
   (:use clotilde.innards
         [matchure :only (fn-match)]))
 
+;; API =========================
+
 (defn initialize!
   "Evaluates to nil.
   vectors: a vector of vectors.
@@ -50,11 +52,35 @@
          ([~patterns] (do ~@body))
          ([~'_] nil))))
 
-#_(defn in!
+(defmacro in!
   "Just like rd!, but the matching tuple is removed from space."
   [patterns & body] 
-  (io! @(rd-in 'patterns :in -space -waitq 'body)
-       
-       
-       ))
+  (assert (vector? patterns) "Invalid patterns argument given to rd! (must be a vector).")
+  `(in (fn-match 
+         ([~patterns] (do ~@body))
+         ([~'_] nil))))
+
+;; Toolset ===========================
+
+(defn empty-space?
+  "True if space contains no tuple. Waiting in! or rd! may exist."
+  []
+  (= 0 (count @-space)))
+
+(defn void-space?
+  "True if space contains no tuple and no waiting in! or rd!."
+  []
+  (= 0 (+ (count @-space) (count @-waitq-ins) (count @-waitq-rds))))
+
+(defn print-space
+  "Guess what."
+  []
+  (let [s (dosync (str "================================" "\n"
+                       (apply str (interpose "\n" (map str (sort @-space))))
+                       "\n" "================================" "\n"
+                       "Tuples in space: " (count @-space)
+                       "; waiting rd!: " (count @-waitq-rds)
+                       "; waiting in!: " (count @-waitq-ins)))]
+    (println s)))
+
 

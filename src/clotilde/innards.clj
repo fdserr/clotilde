@@ -1,19 +1,37 @@
 (ns clotilde.innards
   (:use [matchure :only (fn-match)]))
 
-(declare -init-local -space -waitq rd-in out-eval)
+(defonce 
+  ^{:doc "Tuple space."} 
+  -space (ref (vector)))
 
-(def -space (ref (vector)))
-(def -waitq-ins (ref (vector)))
-(def -waitq-rds (ref (vector)))
+(defonce 
+  ^{:doc "in! ops wait queue."} 
+  -waitq-ins (ref (vector)))
 
-(defn -init-local
-  [] 
-  (dosync
-    (ref-set -waitq-ins (vector))
-    (ref-set -waitq-rds (vector))
-    (ref-set -space (vector))
-    nil))
+(defonce 
+  ^{:doc "rd! ops wait queue."} 
+  -waitq-rds (ref (vector)))
+
+(defn init-local
+  ([] 
+    (dosync
+      (ref-set -waitq-ins (vector))
+      (ref-set -waitq-rds (vector))
+      (ref-set -space (vector))
+      nil))
+  ([vectors] 
+    (assert (vector? vectors) 
+            "illegal argument given to initialize!; vectors must be a vector.")
+    (assert (every? vector? vectors) 
+            "illegal argument given to initialize!; vectors can only contain vectors.")
+    (assert (not (some empty? vectors)) 
+            "illegal argument given to initialize!; vectors cannot contain empty vectors.")
+    (dosync
+      (ref-set -waitq-ins (vector))
+      (ref-set -waitq-rds (vector))
+      (ref-set -space (vec vectors))
+      nil)))
 
 (defn extract-all-with
   "=> (extract-all-with [1 2 3 4 5 6] #(when (odd? %) (* 2 %)))
@@ -41,7 +59,7 @@
         (recur (empty coll) fun (conj applied x) (vec (concat not-applied (rest coll))))
         (recur (rest coll) fun applied (conj not-applied (first coll)))))))
 
-(defn -resolve-match-promise
+#_(defn -resolve-match-promise
   "Evaluates to: the resolved match-promise argument, or nil.
   Side effect(s): the promise is delivered if the match succeeds."
   [tuple match-promise]
@@ -51,7 +69,7 @@
       (deliver p e)
       match-promise)))
 
-(defn -match-in-waitq
+#_(defn -match-in-waitq
   "Evaluates to a [promise, index] form where:
   promise: a realized promise referencing a successful match of the tuple arg in waitq, or nil;
   index: index of the resolved match-promise in waitq, or -1."
@@ -64,25 +82,43 @@
         (when (= :rd m)
           (-match-in-waitq tuple (dissoc waitq i)))))))
 
+(defn resolve-match-promise?
+  [tuple [promise matcher]]
+  (when-let [e (matcher tuple)]
+    (deliver promise e)))
+
+(defn match-in-queue?
+  [tuple]
+  (let [[r-ok r-nok] (extract-all-with @-waitq-rds (partial resolve-match-promise? tuple))
+        [i-ok i-nok] (extract-one-with @-waitq-ins (partial resolve-match-promise? tuple))]
+    (when (seq r-ok)
+      (ref-set -waitq-rds r-nok))
+    (when (seq i-ok)
+      (ref-set -waitq-ins i-nok))))
+
 (defn out-eval 
   "out! and eval! ops implementation.
-  Match in queue or add to space."
+  Match in Qs or add to space."
   [& exprs]
   (io! (dosync
-    (let [t (vec exprs)]
-      (when-not nil #_(-match-in-waitq t @-waitq)        
-        (commute -space conj t))
-      t))))
+         (let [t (vec exprs)]
+           (when-not (match-in-queue? t)        
+             (commute -space conj t))
+           t))))
 
-(defn -match-in-space
-  "Evaluates to a [tuple, index] form where:
-  tuple: a successful match of match-fn in space, or nil;
-  index: index of the succesfully matched tuple in space, or -1."
-  [match-fn space]
-  (for [x space
-        i (.indexOf x)
-        e (match-fn x)]
-    (if e [e i] [nil -1])))
+(defn rd
+  "rd op implementation.
+  Match in space or Q up."
+  [matcher]
+  (io! 
+    (deref 
+      (dosync
+        (ensure -waitq-ins)
+        (let [e (->> @-space (map matcher) (drop-while nil?) first)
+              p (if e (delay e) (promise))]
+          (when-not e
+            (commute -waitq-rds conj [p matcher]))
+          p)))))
 
 #_(defn rd-in
   "rd! and in! ops implementation.

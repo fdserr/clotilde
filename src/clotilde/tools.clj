@@ -13,7 +13,9 @@
 (defn void-space?
   "True if space contains no tuple and no waiting in! or rd!."
   []
-  (= 0 (+ (count @-space) (count @-waitq-ins) (count @-waitq-rds))))
+  (= 0 (dosync (+ (count @-space) 
+                  (count @-waitq-ins) 
+                  (count @-waitq-rds)))))
 
 (defn print-space
   "Guess what."

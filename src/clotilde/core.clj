@@ -1,6 +1,34 @@
 (ns clotilde.core
   (:use clotilde.innards
-        [matchure :only (fn-match)]))
+        clotilde.tools))
+
+;; TODO =========================
+;;
+;; Bugs:
+;;   - ?
+;;
+;; Tests:
+;;   - Primes finder
+;;   - Heavy loading
+;;   - Exceptions in all ops
+;;   - Transactions in all ops
+;;   - Side effects in all ops
+;;
+;; Doc: 
+;;   - Readme 
+;;   - Intro 
+;;
+;; Features:
+;;   - print space and rd/ins 
+;;   - tag with thread id
+;;   - print timeline
+;;   - abort queues (keep space state)
+;;   - pause/resume
+;;   - step debugger
+;;
+;; Refactor:
+;;   - ?
+;;
 
 ;; API =========================
 
@@ -48,39 +76,12 @@
   within the context of rd! (the pars around it, as in let)."
   [patterns & body]
   (assert (vector? patterns) "Invalid patterns argument given to rd! (must be a vector).")
-  `(rd (fn-match 
-         ([~patterns] (do ~@body))
-         ([~'_] nil))))
+  `(rd (ptn-matcher ~patterns ~@body)))
 
 (defmacro in!
   "Just like rd!, but the matching tuple is removed from space."
   [patterns & body] 
   (assert (vector? patterns) "Invalid patterns argument given to rd! (must be a vector).")
-  `(in (fn-match 
-         ([~patterns] (do ~@body))
-         ([~'_] nil))))
-
-;; Toolset ===========================
-
-(defn empty-space?
-  "True if space contains no tuple. Waiting in! or rd! may exist."
-  []
-  (= 0 (count @-space)))
-
-(defn void-space?
-  "True if space contains no tuple and no waiting in! or rd!."
-  []
-  (= 0 (+ (count @-space) (count @-waitq-ins) (count @-waitq-rds))))
-
-(defn print-space
-  "Guess what."
-  []
-  (let [s (dosync (str "================================" "\n"
-                       (apply str (interpose "\n" (map str (sort @-space))))
-                       "\n" "================================" "\n"
-                       "Tuples in space: " (count @-space)
-                       "; waiting rd!: " (count @-waitq-rds)
-                       "; waiting in!: " (count @-waitq-ins)))]
-    (println s)))
+  `(in (ptn-matcher ~patterns ~@body)))
 
 

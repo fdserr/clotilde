@@ -2,6 +2,7 @@
   (:use clojure.test
         clotilde.core
         clotilde.innards
+        clotilde.tools
         [matchure :only (fn-match)]))
 
 (defmacro safe-ops
@@ -17,14 +18,14 @@
 (def test-space-ref (ref test-space))
 (def test-space-ref-nox (ref test-space-nox))
 
-(deftest test-tools
+(deftest test-test-tools
   (testing "safe-ops"
            (is (= nil (safe-ops 10 (Thread/sleep 100) nil :ok)))
            (is (= :ok (safe-ops 100 (Thread/sleep 10) nil :ok)))))
 
 ;; API tests ==========================
 
-;excess dosync => ensure value of ref
+;excess dosync => ensure value of ref?
 
 (deftest test-initialize!
   

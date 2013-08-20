@@ -89,7 +89,7 @@
   (io! (dosync
          (let [t (vec exprs)]
            (when-not (match-in-queue? t)        
-             (alter -space conj t))
+             (alter -space conj (vary-meta t assoc :created (java.lang.System/nanoTime))))
            t))))
 
 (defn rd
@@ -121,4 +121,13 @@
             (ref-set -space nok)
             (alter -waitq-ins conj [p matcher]))
           p)))))
+
+(defmacro ptn-matcher
+  [patterns & body]
+  `(vary-meta (fn-match
+                ([~patterns] (do ~@body))
+                ([~'_] nil))
+     assoc :created (java.lang.System/nanoTime)
+           :patterns '~patterns
+           :body '(~@body)))
 

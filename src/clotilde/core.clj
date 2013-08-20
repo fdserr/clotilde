@@ -40,7 +40,7 @@
   ([vectors] (init-local vectors)))
 
 (defmacro out!
-  "exprs: one or more s-expressions; they'll be evaluated within the calling thread 
+  "exprs: one or more expressions; they'll be evaluated within the calling thread 
   (side effects ok, transactions strictly verboten).
   Evaluates to a tuple form [expr1-result expr2-result .. exprN-result].
   Side-effect(s): some waiting in! or rd! succeed, or the tuple is put in space.
@@ -69,7 +69,7 @@
   lexical context of rd! (eg.: ?var, [?fst & ?rst], ...). 
   See matchure on GitHub for more pattern-matching sweetness. 
   Mucho thankies for writing matchure, Drew!
-  body: one or more s-expressions to evaluate within the lexical context of rd!.
+  body: one or more expressions to evaluate within the lexical context of rd!.
   Evaluates to body, in an implicit do.
   Side-effect(s): rd! will block until a matching tuple is found (no order assumed in space);
   variable patterns (eg. ?var) are bound to their respective matching value from the tuple,

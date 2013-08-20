@@ -1,41 +1,87 @@
 (ns clotilde.core
-  (:use clotilde.innards))
+  (:use clotilde.innards
+        clotilde.tools))
+
+;; TODO =========================
+;;
+;; Bugs:
+;;   - ?
+;;
+;; Tests:
+;;   - Primes finder
+;;   - Heavy loading
+;;   - Exceptions in all ops
+;;   - Transactions in all ops
+;;   - Side effects in all ops
+;;
+;; Doc: 
+;;   - Readme 
+;;   - Intro 
+;;
+;; Features:
+;;   - print space and rd/ins 
+;;   - tag with thread id
+;;   - print timeline
+;;   - abort queues (keep space state)
+;;   - pause/resume
+;;   - step debugger
+;;
+;; Refactor:
+;;   - ?
+;;
+
+;; API =========================
 
 (defn initialize!
-  "Evaluates to: nil.
-  Side-effect(s): empty space, empty wait queue."
-  []
-  (io! (-init-local)))
+  "Evaluates to nil.
+  vectors: a vector of vectors.
+  Side-effect(s): no arg -> empty space; else space starts with vectors"
+  ([] (init-local))
+  ([vectors] (init-local vectors)))
 
-(defn out!
-  "expr: any expression.
-  Evaluates to: nil.
-  Side-effect(s): a waiting pattern-matching succeeds and is removed from queue, or space contains expr."
-  [expr]
-  (io! (-out expr -space -waitq) expr))
-
-(defn rd! 
-  "pattern: a valid pattern for pattern-matching (see org.clojure/core/match).
-  Evaluates to: a pattern-matched expression from space (no ordering is assumed in space).
-  Side-effect(s): if no match is found in space, then the wait queue contains a match-promise for pattern.
-  In french: rd! will NOT remove the matched expression from space. 
-  rd! will BLOCK untill a pattern-matching succeeds. 
-  Hence, its use from the main thread/program is not common. 
-  Passing rd! to eval! makes more sense, since it'll fork a new thread, 
-  thus eliminating the risk of permanently blocking the main thread."
-  [pattern] 
-  (io! (-rdin pattern :rd -space -waitq)))
-
-(defn in!
-  "Just like rd!, but the pattern-matched expression will be removed from space."
-  [pattern] 
-  (io! (-rdin pattern :in -space -waitq)))
+(defmacro out!
+  "exprs: one or more s-expressions; they'll be evaluated within the calling thread 
+  (side effects ok, transactions strictly verboten).
+  Evaluates to a tuple form [expr1-result expr2-result .. exprN-result].
+  Side-effect(s): some waiting in! or rd! succeed, or the tuple is put in space.
+  => (out! :t (+ 1 0) \"One\")
+  [:t 1 \"One\"] ;; [:t 1 \"One\"] added to space."
+  [& exprs]
+  `(out-eval ~@exprs))
 
 (defmacro eval!
-  "exprs: one or more expressions.
-  Evaluates to: nil. 
-  Side-effect(s): exprs are evaluated (in an implicit do) in a new thread of execution.
-  The value of (the last of) exprs is put in space."
+  "Just like out!, but exprs are evaluated within a (single) new thread of execution.
+  Evaluates to a future; when dereferenced, blocks until fully evaluated, then
+  yields a tuple form [expr1-result expr2-result .. exprN-result];
+  result is cached (not re-evaluated) on subsequent derefs.
+  => (let [f (eval! :t (+ 1 0) (out! :i 1))] ;; [:t 1 [:i 1]] and [:i 1] adding to space...
+       @f)
+  [:t 1 [:i 1]] ;; return when f is realized (block until then)
+  => (eval! :job (Thread/sleep 5000) (+ 1 0)) ;; return fast  
+  #<core$future_call$reify__6267@66265039: :pending> ;; [:job nil 1] added to space in ~5 seconds"
   [& exprs]
-  `(io! (future (-out (do ~@exprs) -space -waitq)) nil))
+  `(future (out-eval ~@exprs)))
+
+(defmacro rd! 
+  "patterns: a vector of pattern elements to match against tuples in space.
+  Valid patterns are literals (eg.: 0, \"bug\", :x, ...), bindings (eg.: x, y, whatnot, ...), 
+  wildcards (_ and ?), regexps (eg.: #\"hello\"), and/or variables to be bound within the 
+  lexical context of rd! (eg.: ?var, [?fst & ?rst], ...). 
+  See matchure on GitHub for more pattern-matching sweetness. 
+  Mucho thankies for writing matchure, Drew!
+  body: one or more s-expressions to evaluate within the lexical context of rd!.
+  Evaluates to body, in an implicit do.
+  Side-effect(s): rd! will block until a matching tuple is found (no order assumed in space);
+  variable patterns (eg. ?var) are bound to their respective matching value from the tuple,
+  within the context of rd! (the pars around it, as in let)."
+  [patterns & body]
+  (assert (vector? patterns) "Invalid patterns argument given to rd! (must be a vector).")
+  `(rd (ptn-matcher ~patterns ~@body)))
+
+(defmacro in!
+  "Just like rd!, but the matching tuple is removed from space."
+  [patterns & body] 
+  (assert (vector? patterns) "Invalid patterns argument given to rd! (must be a vector).")
+  `(in (ptn-matcher ~patterns ~@body)))
+
 

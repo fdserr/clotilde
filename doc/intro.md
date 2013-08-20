@@ -1,5 +1,7 @@
 # Introduction to clotilde
 
+TODO: update doc, write version, post to clojars
+
 ## initialize! []
 
 Evaluates to: nil.

@@ -1,82 +1,133 @@
 (ns clotilde.innards
-  (:use [clojure.core.match :only (match)]))
+  (:use [matchure :only (fn-match)]))
 
-(declare -init-local -space -waitq -rdin -out)
+;; Nothing private => easy test and easy plugs
 
-(def -space (ref (vector)))
+(defonce 
+  ^{:doc "Tuple space."} 
+  -space (ref (vector)))
 
-(def -waitq (ref (vector)))
+(defonce 
+  ^{:doc "in! ops wait queue."} 
+  -waitq-ins (ref (vector)))
 
-(defn -init-local
-  [] 
-  (dosync
-    (ref-set -waitq (vector))
-    (ref-set -space (vector))
-    nil))
+(defonce 
+  ^{:doc "rd! ops wait queue."} 
+  -waitq-rds (ref (vector)))
 
-(defn remove-once
-  [coll item]
-  (let [[n m] (split-with (partial not= item) coll)] 
-    (concat n (rest m))))
+(defn init-local
+  "Start a fresh space, blank or equal to vectors."
+  ([] 
+    (dosync
+      (ref-set -waitq-ins (vector))
+      (ref-set -waitq-rds (vector))
+      (ref-set -space (vector))
+      nil))
+  ([vectors] 
+    (assert (vector? vectors) 
+            "illegal argument given to initialize!; vectors must be a vector.")
+    (assert (every? vector? vectors) 
+            "illegal argument given to initialize!; vectors can only contain vectors.")
+    (assert (not (some empty? vectors)) 
+            "illegal argument given to initialize!; vectors cannot contain empty vectors.")
+    (dosync
+      (ref-set -waitq-ins (vector))
+      (ref-set -waitq-rds (vector))
+      (ref-set -space (vec vectors))
+      nil)))
 
-(defn -resolve-match-promise
-  "Evaluates to: the (potentially resolved) match-promise argument.
-  Side effect(s): the promise is delivered if the match succeeds;
-  the matched expression is put back in space if mode is :rd."
-  [expr match-promise]
-  (let [[p f m] match-promise
-        e (when-not (realized? p) (f expr))]
-    (when e
-      (deliver p e)
-      (if (= m :rd)
-        (-out e -space -waitq))
-      match-promise)))
+(defn extract-all-with
+  "=> (extract-all-with [1 2 3 4 5 6] #(when (odd? %) (* 2 %)))
+  [[2 6 10] [2 4 6]]"
+  ([coll fun]
+    (extract-all-with coll fun (transient []) (transient [])))
+  ([coll fun applied not-applied]
+    (if-not (seq coll)
+      [(persistent! applied) (persistent! not-applied)]
+      (if-let 
+        [x (fun (first coll))]
+        (recur (rest coll) fun (conj! applied x) not-applied)
+        (recur (rest coll) fun applied (conj! not-applied (first coll)))))))
 
-(defn -match-in-waitq
-  "Evaluates to: a resolved match-promise against expr from waitq, or nil "
-  [expr waitq]
-  (first (filter (partial -resolve-match-promise expr) waitq)))
+(defn extract-one-with
+  "=> (extract-one-with [12 2 3 4 5 6] #(when (odd? %) (* 2 %)))
+  [[6] [12 2 4 5 6]]"
+  ([coll fun]
+    (extract-one-with coll fun [] []))
+  ([coll fun applied not-applied]
+    (if-not (seq coll)
+      [applied not-applied]
+      (if-let 
+        [x (fun (first coll))]
+        (recur (empty coll) fun (conj applied x) (vec (concat not-applied (rest coll))))
+        (recur (rest coll) fun applied (conj not-applied (first coll)))))))
 
-(defn -match-in-space
-  "Evaluates to: a pattern-matched expression from space using match-fn, or nil."
-  [match-fn space]
-  (first (filter match-fn space)))
+(defn resolve-match-promise?
+  "Attempt to resolve a match promise.
+  Eval to matcher result or nil."
+  [tuple [promise matcher]]
+  (when-let [e (matcher tuple)]
+    (deliver promise e)))
 
-(defmacro -match-fn
-  "Evaluates to: a one argument pattern-matching function. 
-  pattern: to match against the fn argument. See org.clojure/core/match.
-  Convention: a match function evaluates to the matched expression, or nil."
-  [pattern]
-  `#(match [%] [~pattern] % :else nil))
+(defn match-in-queue?
+  "Pass tuple to all waiting rd!s and to some in!s.
+  Return truthy as soon as an in! matches, else eval to nil."
+  [tuple]
+  (let [rslv (partial resolve-match-promise? tuple)
+        [rd-ok rd-nok] (extract-all-with @-waitq-rds rslv)
+        [in-ok in-nok] (extract-one-with @-waitq-ins rslv)]
+    (when-not (empty? rd-ok)
+      (ref-set -waitq-rds rd-nok))
+    (when-not (empty? in-ok)
+      (ref-set -waitq-ins in-nok))
+    (not-empty in-ok)))
 
-(defn -out 
-  "out! op implementation.
-  Match in queue or add to space."
-  [expr space-ref waitq-ref]
-  (dosync
-    (let [p (-match-in-waitq expr @waitq-ref)]
-      (if p
-        (alter waitq-ref remove-once p)
-        (alter space-ref conj expr)))
-    nil))
+(defn out-eval 
+  "out! and eval! ops implementation.
+  Match in Qs or add to space."
+  [& exprs]
+  (io! (dosync
+         (let [t (vec exprs)]
+           (when-not (match-in-queue? t)        
+             (alter -space conj (vary-meta t assoc :created (java.lang.System/nanoTime))))
+           t))))
 
-(defn -rdin
-  "rd! and in! ops implementation.
-  Match in space or add to queue [promise matcher mode]."
-  [pattern mode space-ref waitq-ref]
-  (deref 
-    (dosync 
-      (let [f (-match-fn pattern)
-            x (-match-in-space f @space-ref)]
-        (if x
-          (do
-            (when (= mode :in)
-              (alter space-ref remove-once x))        
-            (delay x))
-          (let [p (promise)] 
-            (alter waitq-ref conj [p f mode])
-            p))))))
+(defn rd
+  "rd! op implementation.
+  Match in space or Q up."
+  [matcher]
+  (io! 
+    (deref 
+      (dosync
+        (ensure -waitq-ins)
+        (let [e (->> @-space (map matcher) (drop-while nil?) first)
+              p (if e (delay e) (promise))]
+          (when-not e
+            (alter -waitq-rds conj [p matcher]))
+          p)))))
 
+(defn in
+  "in! op implementation.
+  Remove match from space or Q up."
+  [matcher]
+  (io!
+    (deref
+      (dosync
+        (ensure -waitq-rds)
+        (let [[ok nok] (extract-one-with @-space matcher)
+              e (first ok)
+              p (if e (delay e) (promise))]
+          (if-not (empty? ok)
+            (ref-set -space nok)
+            (alter -waitq-ins conj [p matcher]))
+          p)))))
 
-
+(defmacro ptn-matcher
+  [patterns & body]
+  `(vary-meta (fn-match
+                ([~patterns] (do ~@body))
+                ([~'_] nil))
+     assoc :created (java.lang.System/nanoTime)
+           :patterns '~patterns
+           :body '(~@body)))
 

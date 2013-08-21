@@ -1,45 +1,32 @@
 # Introduction to clotilde
 
-TODO: update doc, write version, post to clojars
+## initialize! [] / [vector-of-vectors]
 
-## initialize! []
+-> nil
 
-Evaluates to: nil.
+side effect: blank space / space as vector-of-vectors, empty queues.
 
-Side-effect(s): empty space, empty wait queue.
+## out! [& exprs] 
 
-## out! [expr]
+-> vector
 
-expr: any expression.
+side effect: vector added to space.
 
-Evaluates to: expr.
+## eval! [& exprs] 
 
-Side-effect(s): a waiting pattern-matching succeeds and is removed from queue, or space contains expr.
+-> (future vector)
 
-## rd! [pattern]
+side effect: vector added to space by another thread.
 
-pattern: a valid pattern for pattern-matching (see org.clojure/core/match).
+## rd! [patterns & exprs] 
+-> exprs
 
-Evaluates to: a pattern-matched expression from space (no ordering is assumed in space).
+with bindings set using patterns, side effect: may queue up and block until matching.
 
-Side-effect(s): if no match is found in space, then the wait queue contains a match-promise for pattern.
+## in! [patterns & exprs] 
+-> exprs
 
-In french: rd! will NOT remove the matched expression from space. 
-rd! will BLOCK untill a pattern-matching succeeds. 
-Hence, its use from the main thread/program is not common. 
-Passing rd! to eval! makes more sense, since it'll fork a new thread, 
-thus eliminating the risk of permanently blocking the main thread.
+with bindings set using patterns, side effect: may queue up and block until matching, 
+remove a matching vector form space.
 
-## in! [pattern]
-
-Just like rd!, but the pattern-matched expression will be removed from space."
-
-## eval! [& exprs]
-
-exprs: one or more expressions.
-
-Evaluates to: nil. 
-
-Side-effect(s): exprs are evaluated (in an implicit do) in a new thread of execution.
-The value of (the last of) exprs is put in space.
 

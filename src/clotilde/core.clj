@@ -26,7 +26,7 @@
 ;;   - step debugger
 ;;
 ;; Refactor:
-;;   - ?
+;;   - investigate core.async channels instead of ad-hoc queues
 ;;
 
 ;; API =========================

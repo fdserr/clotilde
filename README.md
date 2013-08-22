@@ -57,7 +57,7 @@ Add a :use clause to your namespace:
 
 ```clojure
 (ns your-project.core
-  (:use clotilde         ;; main API
+  (:use clotilde.core    ;; API
         clotilde.tools   ;; utilities
         ))
 ````

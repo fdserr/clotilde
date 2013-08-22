@@ -34,9 +34,9 @@ Well worth a read for anyone willing to program for more than a handful of cores
 especially when the book is short and unpedantic, and when it's
 [freely available for browsing online](http://www.lindaspaces.com/book/), 
 and when it can also be [downloaded in pdf format](http://www.lindaspaces.com/book/book.pdf). 
-Great times we live in; if only Clotilde had html and pdf, she'd probably have stayed a century or two.
-For deeper litterature on the topic, visit [Science Direct](http://www.sciencedirect.com/science/article/pii/S0890540199928237)
-(no, I havn't read all that, and I won't, but some of these papers are really worth the time).
+Great times we live in; if only Clotilde had html and pdf, she'd probably have stayed for one more century or two.
+For deeper litterature on the topic, see [Science Direct](http://www.sciencedirect.com/science/article/pii/S0890540199928237)
+(no, I havn't read all the references, and I won't, but some of these papers are really worth the time).
 
 ## Credits
 
@@ -56,7 +56,7 @@ For usage and instructions, see the program's documentation.
 ;; TODO: write documentation.
 ````
 
-Kidding, the code is well documented, and comes with tests; idiomatic Clojure ain't it?
+Kidding, the code is documented, and comes with tests; idiomatic Clojure ain't it?
 
 Have fun.
 

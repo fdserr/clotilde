@@ -10,16 +10,15 @@
 ;; Tests:
 ;;   - Primes finder
 ;;   - Heavy loading
-;;   - Exceptions in all ops
-;;   - Transactions in all ops
-;;   - Side effects in all ops
+;;   - Exceptions in all ops (repl-test ok)
+;;   - Transactions in all ops (repl-test ok)
+;;   - Side effects in all ops (repl-test ok)
 ;;
 ;; Doc: 
-;;   - Readme 
-;;   - Intro 
+;;   - ? 
 ;;
 ;; Features:
-;;   - print space and rd/ins 
+;;   - print rd/in queues 
 ;;   - tag with thread id
 ;;   - print timeline
 ;;   - abort queues (keep space state)
@@ -41,7 +40,7 @@
 
 (defmacro out!
   "exprs: one or more expressions; they'll be evaluated within the calling thread 
-  (side effects ok, transactions strictly verboten).
+  (side effects ok, transactions ok).
   Evaluates to a tuple form [expr1-result expr2-result .. exprN-result].
   Side-effect(s): some waiting in! or rd! succeed, or the tuple is put in space.
   => (out! :t (+ 1 0) \"One\")
@@ -70,7 +69,7 @@
   See matchure on GitHub for more pattern-matching sweetness. 
   Mucho thankies for writing matchure, Drew!
   body: one or more expressions to evaluate within the lexical context of rd!.
-  Evaluates to body, in an implicit do.
+  Evaluates to body, in an implicit do (side effects ok, transactions ok).
   Side-effect(s): rd! will block until a matching tuple is found (no order assumed in space);
   variable patterns (eg. ?var) are bound to their respective matching value from the tuple,
   within the context of rd! (the pars around it, as in let)."

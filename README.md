@@ -46,9 +46,21 @@ Drew Colthorp: mucho thankies for all the nights of mine you saved; illumination
 
 ## Usage
 
-Free software. No warranty whatsoever and for any purpose. Use at your own risk. 
-The author will not provide support to your nephew if he broke his neck while using this code 
-(unless politely asked to oblige, @fdserr).
+Add a Leiningen depency to your project.clj:
+```clojure
+(defproject your-project "0.0.1"
+  :dependencies [[org.clojure/clojure "1.5.1"]
+                 [clotilde "0.2.1-SNAPSHOT"]])
+````
+
+Add a :use clause to your namespace:
+
+```clojure
+(ns your-project.core
+  (:use clotilde         ;; main API
+        clotilde.tools   ;; utilities
+        ))
+````
 
 For usage and instructions, see the program's documentation.
 

@@ -1,4 +1,4 @@
-(defproject clotilde "0.2.0-beta"
+(defproject clotilde "0.2.1-SNAPSHOT"
   :description "The Linda process coordination language written in Clojure."
   :url "https://github.com/justiniac/clotilde"
   :license {:name "Eclipse Public License"

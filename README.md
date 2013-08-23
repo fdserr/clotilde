@@ -30,8 +30,8 @@ HOW TO WRITE PARALLEL PROGRAMS: A FIRST COURSE
 , By Nicholas Carriero and David Gelernter
 _©1990 Massachusetts Institute of Technology
 , ISBN 0-262-03171-X_.
-Well worth a read for anyone willing to program for more than a handful of cores in any language,
-especially when the book is short and unpedantic, and when it's
+Well worth a read for anyone willing to program against more than a handful of cores, in any language.
+Especially when the book is short and unpedantic, and when it's
 [freely available for browsing online](http://www.lindaspaces.com/book/), 
 and when it can also be [downloaded in pdf format](http://www.lindaspaces.com/book/book.pdf). 
 Great times we live in; if only Clotilde had html and pdf, she'd probably have stayed for one more century or two.

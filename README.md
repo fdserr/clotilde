@@ -34,8 +34,8 @@ Well worth a read for anyone willing to program against more than a handful of c
 Especially when the book is short and unpedantic, and when it's
 [freely available for browsing online](http://www.lindaspaces.com/book/), 
 and when it can also be [downloaded in pdf format](http://www.lindaspaces.com/book/book.pdf). 
-Great times we live in; if only Clotilde had html and pdf, she'd probably have stayed for one more century or two.
-For deeper litterature on the topic, see [Science Direct](http://www.sciencedirect.com/science/article/pii/S0890540199928237)
+Great times we live in; if only Clotilde had html and pdf, she'd probably have gone centenarian.
+For deeper litterature on the topic (Linda, that is), see [Science Direct](http://www.sciencedirect.com/science/article/pii/S0890540199928237)
 (no, I havn't read all the references, and I won't, but some of these papers are really worth the time).
 
 ## Credits

@@ -3,7 +3,8 @@
         clotilde.core
         clotilde.innards
         clotilde.tools
-        [matchure :only (fn-match)]))
+        matchure
+        #_clj-tuple))
 
 (defmacro safe-ops
   [time-out & exprs]

@@ -1,5 +1,6 @@
 (ns clotilde.innards
-  (:use [matchure :only (fn-match)]))
+  (:use [matchure :only (fn-match)]
+        #_clj-tuple))
 
 ;; Nothing private => easy test and easy plugs
 
@@ -85,12 +86,11 @@
 (defn out-eval 
   "out! and eval! ops implementation.
   Match in Qs or add to space."
-  [& exprs]
+  [tuple]
   (io! (dosync
-         (let [t (vec exprs)]
-           (when-not (match-in-queue? t)        
-             (alter -space conj (vary-meta t assoc :created (java.lang.System/nanoTime))))
-           t))))
+         (when-not (match-in-queue? tuple)        
+             (alter -space conj (vary-meta tuple assoc :created (java.lang.System/nanoTime))))
+         tuple)))
 
 (defn rd
   "rd! op implementation.

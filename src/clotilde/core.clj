@@ -1,6 +1,7 @@
 (ns clotilde.core
   (:use clotilde.innards
-        clotilde.tools))
+        clotilde.tools
+        clj-tuple))
 
 ;; TODO =========================
 ;;
@@ -46,7 +47,7 @@
   => (out! :t (+ 1 0) \"One\")
   [:t 1 \"One\"] ;; [:t 1 \"One\"] added to space."
   [& exprs]
-  `(out-eval ~@exprs))
+  `(out-eval #_(vector ~@exprs) (tuple ~@exprs)))
 
 (defmacro eval!
   "Just like out!, but exprs are evaluated within a (single) new thread of execution.
@@ -59,7 +60,7 @@
   => (eval! :job (Thread/sleep 5000) (+ 1 0)) ;; return fast  
   #<core$future_call$reify__6267@66265039: :pending> ;; [:job nil 1] added to space in ~5 seconds"
   [& exprs]
-  `(future (out-eval ~@exprs)))
+  `(future (out-eval #_(vector ~@exprs) (tuple ~@exprs))))
 
 (defmacro rd! 
   "patterns: a vector of pattern elements to match against tuples in space.
